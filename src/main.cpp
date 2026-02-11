@@ -73,9 +73,9 @@ int main(int argc, char **argv) {
 
         std::string response = "HTTP/1.1 ";
         if (path == "/")
-          response += "200 OK\r\n";
+          response += "200 OK\r\n\r\n";
         else
-          response += "404 Not Found\r\n";
+          response += "404 Not Found\r\n\r\n";
 
         send(client_socket, response.c_str(), response.length(), 0);
       }
