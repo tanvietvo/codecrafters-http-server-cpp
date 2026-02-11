@@ -59,13 +59,31 @@ int main(int argc, char **argv) {
       std::cerr << "accept failed\n";
       continue;
     }
-    std::string response = "HTTP/1.1 200 OK\r\n\r\n";
-    send(client_socket, response.c_str(), response.length(), 0);
+
+    char buffer[1024] = {0};
+    int bytes_read = recv(client_socket, buffer, 1024, 0);
+    if (bytes_read > 0) {
+      std::string request = std::string(buffer);
+
+      size_t first_space = request.find(" ");
+      size_t second_space = request.find(" ", first_space + 1);
+
+      if (first_space != std::string::npos && second_space != std::string::npos) {
+        std::string path = request.substr(first_space + 1, second_space - first_space - 1);
+
+        std::string response = "HTTP/1.1 ";
+        if (path == "/")
+          response += "200 OK\r\n";
+        else
+          response += "404 Not Found\r\n";
+
+        send(client_socket, response.c_str(), response.length(), 0);
+      }
+    }
 
     close(client_socket);
   }
 
   close(server_fd);
-
   return 0;
 }
