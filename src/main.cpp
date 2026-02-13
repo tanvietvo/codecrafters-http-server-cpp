@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
           response += "200 OK\r\n"
                       "\r\n";
         else if (path.find("/echo/") == 0) {
-          std::string extracted_path = path.substr(path.find("/echo/"));
+          std::string extracted_path = path.substr(6);
           response += "200 OK\r\n"
                       "Content-Type: text/plain\r\n"
                       "Content-Length: " + std::to_string(extracted_path.length()) + "\r\n"
