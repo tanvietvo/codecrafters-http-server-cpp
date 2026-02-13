@@ -83,6 +83,23 @@ int main(int argc, char **argv) {
                       "\r\n" +
                       extracted_path;
         }
+        else if (path == "/user-agent") {
+          std::string term = "User-Agent: ";
+          size_t term_pos = request.find(term);
+
+          if (term_pos != std::string::npos) {
+            size_t start_pos = term_pos + term.length();
+            size_t end_pos = request.find("\r\n", start_pos);
+
+            std::string value = request.substr(start_pos, end_pos - start_pos);
+
+            response += "200 OK\r\n"
+                      "Content-Type: text/plain\r\n"
+                      "Content-Length: " + std::to_string(value.length()) + "\r\n"
+                      "\r\n" +
+                      value;
+          }
+        }
         else
           response += "404 Not Found\r\n"
                       "\r\n";
