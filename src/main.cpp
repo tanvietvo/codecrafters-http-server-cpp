@@ -69,6 +69,9 @@ void handle_client(int client_fd, const std::string &directory) {
                      "\r\n" +
                      content;
         }
+        else
+          response += "404 Not Found\r\n"
+                    "\r\n";
       }
       else
         response += "404 Not Found\r\n"
