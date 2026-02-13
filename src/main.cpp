@@ -7,6 +7,58 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <thread>
+
+void handle_client(int client_fd) {
+  char buffer[1024] = {0};
+  int bytes_read = recv(client_fd, buffer, 1024, 0);
+  if (bytes_read > 0) {
+    std::string request = std::string(buffer);
+
+    size_t first_space = request.find(" ");
+    size_t second_space = request.find(" ", first_space + 1);
+
+    if (first_space != std::string::npos && second_space != std::string::npos) {
+      std::string path = request.substr(first_space + 1, second_space - first_space - 1);
+
+      std::string response = "HTTP/1.1 ";
+      if (path == "/")
+        response += "200 OK\r\n"
+                    "\r\n";
+      else if (path.find("/echo/") == 0) {
+        std::string extracted_path = path.substr(6);
+        response += "200 OK\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Content-Length: " + std::to_string(extracted_path.length()) + "\r\n"
+                    "\r\n" +
+                    extracted_path;
+      }
+      else if (path == "/user-agent") {
+        std::string term = "User-Agent: ";
+        size_t term_pos = request.find(term);
+
+        if (term_pos != std::string::npos) {
+          size_t start_pos = term_pos + term.length();
+          size_t end_pos = request.find("\r\n", start_pos);
+
+          std::string value = request.substr(start_pos, end_pos - start_pos);
+
+          response += "200 OK\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Content-Length: " + std::to_string(value.length()) + "\r\n"
+                    "\r\n" +
+                    value;
+        }
+      }
+      else
+        response += "404 Not Found\r\n"
+                    "\r\n";
+
+      send(client_fd, response.c_str(), response.length(), 0);
+      close(client_fd);
+    }
+  }
+}
 
 int main(int argc, char **argv) {
   // Flush after every std::cout / std::cerr
@@ -60,55 +112,8 @@ int main(int argc, char **argv) {
       continue;
     }
 
-    char buffer[1024] = {0};
-    int bytes_read = recv(client_socket, buffer, 1024, 0);
-    if (bytes_read > 0) {
-      std::string request = std::string(buffer);
 
-      size_t first_space = request.find(" ");
-      size_t second_space = request.find(" ", first_space + 1);
-
-      if (first_space != std::string::npos && second_space != std::string::npos) {
-        std::string path = request.substr(first_space + 1, second_space - first_space - 1);
-
-        std::string response = "HTTP/1.1 ";
-        if (path == "/")
-          response += "200 OK\r\n"
-                      "\r\n";
-        else if (path.find("/echo/") == 0) {
-          std::string extracted_path = path.substr(6);
-          response += "200 OK\r\n"
-                      "Content-Type: text/plain\r\n"
-                      "Content-Length: " + std::to_string(extracted_path.length()) + "\r\n"
-                      "\r\n" +
-                      extracted_path;
-        }
-        else if (path == "/user-agent") {
-          std::string term = "User-Agent: ";
-          size_t term_pos = request.find(term);
-
-          if (term_pos != std::string::npos) {
-            size_t start_pos = term_pos + term.length();
-            size_t end_pos = request.find("\r\n", start_pos);
-
-            std::string value = request.substr(start_pos, end_pos - start_pos);
-
-            response += "200 OK\r\n"
-                      "Content-Type: text/plain\r\n"
-                      "Content-Length: " + std::to_string(value.length()) + "\r\n"
-                      "\r\n" +
-                      value;
-          }
-        }
-        else
-          response += "404 Not Found\r\n"
-                      "\r\n";
-
-        send(client_socket, response.c_str(), response.length(), 0);
-      }
-    }
-
-    close(client_socket);
+      std::thread(handle_client, client_socket).detach();
   }
 
   close(server_fd);
