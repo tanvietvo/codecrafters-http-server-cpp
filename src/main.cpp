@@ -2,16 +2,19 @@
 #include <cstdlib>
 #include <string>
 #include <cstring>
+#include <fstream>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sstream>
 #include <thread>
 
-void handle_client(int client_fd) {
+void handle_client(int client_fd, const std::string &directory) {
   char buffer[1024] = {0};
   int bytes_read = recv(client_fd, buffer, 1024, 0);
+
   if (bytes_read > 0) {
     std::string request = std::string(buffer);
 
@@ -50,6 +53,23 @@ void handle_client(int client_fd) {
                     value;
         }
       }
+      else if (path.find("/files/") == 0) {
+        std::string file_name = path.substr(7);
+        std::string file_path = directory + file_name;
+
+        std::ifstream file(file_path, std::ios::binary);
+        if (file.is_open()) {
+          std::stringstream buffer;
+          buffer << file.rdbuf();
+          std::string content = buffer.str();
+
+          response += "200 OK\r\n"
+                     "Content-Type: application/octet-stream\r\n"
+                     "Content-Length: " + std::to_string(content.length()) + "\r\n"
+                     "\r\n" +
+                     content;
+        }
+      }
       else
         response += "404 Not Found\r\n"
                     "\r\n";
@@ -61,6 +81,10 @@ void handle_client(int client_fd) {
 }
 
 int main(int argc, char **argv) {
+  std::string directory = "";
+  if (argc == 3 && std::string(argv[1]) == "--directory") {
+    directory = std::string(argv[2]);
+  }
   // Flush after every std::cout / std::cerr
   std::cout << std::unitbuf;
   std::cerr << std::unitbuf;
@@ -113,7 +137,7 @@ int main(int argc, char **argv) {
     }
 
 
-      std::thread(handle_client, client_socket).detach();
+      std::thread(handle_client, client_socket, directory).detach();
   }
 
   close(server_fd);
