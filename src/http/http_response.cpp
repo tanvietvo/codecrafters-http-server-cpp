@@ -5,9 +5,9 @@ HttpResponse::HttpResponse(int status_code) {
     set_status_code(status_code);
 }
 
-void HttpResponse::set_status_code(int status_code) {
-    status_code = status_code;
-    status_message = get_status_message_by_status_code(status_code);
+void HttpResponse::set_status_code(int code) {
+    status_code = code;
+    status_message = get_status_message_by_status_code(code);
 }
 
 void HttpResponse::set_header(const std::string& key,
@@ -41,6 +41,8 @@ std::string HttpResponse::get_status_message_by_status_code(int status_code) {
     switch (status_code) {
         case 200: return "OK";
         case 404: return "Not Found";
+        case 201: return "Created";
+        case 400: return "Bad Request";
         default: return "Undefined";
     }
 }

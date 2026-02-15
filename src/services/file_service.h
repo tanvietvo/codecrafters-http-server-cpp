@@ -7,6 +7,7 @@ class FileService {
     explicit FileService(const std::string& base_dir);
     bool exists(const std::string& filename) const;
     std::string read(const std::string& filename) const;
+    bool write(const std::string& filename, const std::string& content) const;
 
     private:
     std::string base_directory;

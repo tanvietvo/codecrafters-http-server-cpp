@@ -15,3 +15,14 @@ std::string FileService::read(const std::string& filename) const {
     ss << file.rdbuf();
     return ss.str();
 }
+
+bool FileService::write(const std::string& filename, const std::string& content) const {
+    std::ofstream file(base_directory + filename, std::ios::binary);
+
+    if (!file) {
+        return false;
+    }
+
+    file << content;
+    return true;
+}

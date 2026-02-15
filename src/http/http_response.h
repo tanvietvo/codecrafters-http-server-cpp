@@ -14,7 +14,7 @@ class HttpResponse {
     private:
     int status_code;
     std::string status_message;
-    std::string get_status_message_by_status_code(int status_code);
+    static std::string get_status_message_by_status_code(int status_code);
     std::unordered_map<std::string, std::string> headers;
     std::string body;
 };

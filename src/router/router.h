@@ -9,7 +9,7 @@
 class Router {
 public:
     explicit Router(const std::string& directory);
-    HttpResponse route(const HttpRequest& request);
+    HttpResponse route(const HttpRequest& request) const;
 
 private:
     FileService file_service;
