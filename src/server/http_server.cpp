@@ -95,12 +95,16 @@ void HttpServer::handle_client(int client_fd) {
 
         if (req.get_header("Connection") != "close") {
             res.set_header("Connection", "keep-alive");
+        } else {
+            res.set_header("Connection", "close");
         }
 
         std::string response = res.to_string();
         send(client_fd, response.c_str(), response.length(), 0);
 
-        if (req.get_header("Connection") == "close") break;
+        if (req.get_header("Connection") == "close") {
+            break;
+        }
     }
     close(client_fd);
 }
