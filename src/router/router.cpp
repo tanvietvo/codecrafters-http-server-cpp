@@ -11,6 +11,12 @@ HttpResponse Router::route(const HttpRequest& req) const {
         if (req.path.rfind("/echo/", 0) == 0) {
             std::string msg = req.path.substr(6);
             HttpResponse res(200);
+
+            std::string accept_encoding = req.get_header("Accept-Encoding");
+            if (accept_encoding.find("gzip") != std::string::npos) {
+                res.set_header("Content-Encoding", "gzip");
+            }
+
             res.set_header("Content-Type", "text/plain");
             res.set_body(msg);
             return res;
