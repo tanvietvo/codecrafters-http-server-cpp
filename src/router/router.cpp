@@ -1,6 +1,39 @@
 #include "router.h"
+#include <cstring>
+#include <zlib.h>
 
 Router::Router(const std::string &directory) : file_service(directory) {}
+
+std::string gzip_compress(const std::string& data) {
+    z_stream zs;
+    memset(&zs, 0, sizeof(zs));
+
+    // windowBits = 15 + 16 for gzip encoding
+    if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+        return data;
+    }
+
+    zs.next_in = (Bytef*)data.data();
+    zs.avail_in = data.size();
+
+    int ret;
+    char outbuffer[32768];
+    std::string outstring;
+
+    do {
+        zs.next_out = reinterpret_cast<Bytef*>(outbuffer);
+        zs.avail_out = sizeof(outbuffer);
+
+        ret = deflate(&zs, Z_FINISH);
+
+        if (outstring.size() < zs.total_out) {
+            outstring.append(outbuffer, zs.total_out - outstring.size());
+        }
+    } while (ret == Z_OK);
+
+    deflateEnd(&zs);
+    return outstring;
+}
 
 HttpResponse Router::route(const HttpRequest& req) const {
     if (req.method == "GET") {
@@ -15,10 +48,14 @@ HttpResponse Router::route(const HttpRequest& req) const {
             std::string accept_encoding = req.get_header("Accept-Encoding");
             if (accept_encoding.find("gzip") != std::string::npos) {
                 res.set_header("Content-Encoding", "gzip");
+                res.set_body(gzip_compress(msg));
+            }
+            else {
+                res.set_body(msg);
             }
 
             res.set_header("Content-Type", "text/plain");
-            res.set_body(msg);
+
             return res;
         }
 
