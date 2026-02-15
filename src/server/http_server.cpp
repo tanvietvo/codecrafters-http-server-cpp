@@ -54,46 +54,53 @@ void HttpServer::start() {
 
 void HttpServer::handle_client(int client_fd) {
     char buffer[4096] = {0};
-    std::string raw;
+    std::string stream_buffer;
 
-    while (raw.find("\r\n\r\n") == std::string::npos) {
-        int bytes = recv(client_fd, buffer, sizeof(buffer), 0);
-        if (bytes <= 0) break;
-        raw.append(buffer, bytes);
+    while (true) {
+        while (stream_buffer.find("\r\n\r\n") == std::string::npos) {
+            int bytes = recv(client_fd, buffer, sizeof(buffer), 0);
+            if (bytes <= 0) {
+                close(client_fd);
+                return;
+            }
+            stream_buffer.append(buffer, bytes);
+        }
+
+        size_t header_end_pos = stream_buffer.find("\r\n\r\n");
+        std::string header_part = stream_buffer.substr(0, header_end_pos + 4);
+
+        HttpRequest temp_req = HttpParser::parse(header_part);
+
+        size_t content_length = 0;
+        std::string len_str = temp_req.get_header("Content-Length");
+        if (!len_str.empty())
+            content_length = std::stoul(len_str);
+
+        size_t total_request_size = header_end_pos + 4 + content_length;
+
+        while (stream_buffer.size() < total_request_size) {
+            int bytes = recv(client_fd, buffer, sizeof(buffer), 0);
+            if (bytes <= 0) {
+                close(client_fd);
+                return;
+            }
+            stream_buffer.append(buffer, bytes);
+        }
+
+        std::string full_request_raw = stream_buffer.substr(0, total_request_size);
+        stream_buffer.erase(0, total_request_size);
+
+        HttpRequest req = HttpParser::parse(full_request_raw);
+        HttpResponse res = router.route(req);
+
+        if (req.get_header("Connection") != "close") {
+            res.set_header("Connection", "keep-alive");
+        }
+
+        std::string response = res.to_string();
+        send(client_fd, response.c_str(), response.length(), 0);
+
+        if (req.get_header("Connection") == "close") break;
     }
-
-    if (raw.empty()) {
-        close(client_fd);
-        return;
-    }
-
-    size_t header_end = raw.find("\r\n\r\n");
-    std::string header_part = raw.substr(0, header_end + 4);
-
-    HttpRequest temp_req = HttpParser::parse(header_part);
-
-    size_t content_length = 0;
-    std::string len_str = temp_req.get_header("Content-Length");
-    if (!len_str.empty())
-        content_length = std::stoul(len_str);
-
-    size_t current_body_size =
-        raw.size() - (header_end + 4);
-
-    while (current_body_size < content_length) {
-        int bytes = recv(client_fd, buffer, sizeof(buffer), 0);
-        if (bytes <= 0) break;
-        raw.append(buffer, bytes);
-        current_body_size += bytes;
-    }
-
-    HttpRequest req = HttpParser::parse(raw);
-
-    HttpResponse res = router.route(req);
-
-    std::string response = res.to_string();
-
-    send(client_fd, response.c_str(), response.length(), 0);
-
     close(client_fd);
 }
